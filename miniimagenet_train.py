@@ -1,21 +1,19 @@
-import  torch, os
-import  numpy as np
-from    MiniImagenet import MiniImagenet
-import  scipy.stats
-from    torch.utils.data import DataLoader
-from    torch.optim import lr_scheduler
-import  random, sys, pickle
-import  argparse
+import torch, os
+import numpy as np
+from MiniImagenet import MiniImagenet
+import scipy.stats
+from torch.utils.data import DataLoader
+from torch.optim import lr_scheduler
+import random, sys, pickle
+import argparse
 
 from meta import Meta
-
 
 def mean_confidence_interval(accs, confidence=0.95):
     n = accs.shape[0]
     m, se = np.mean(accs), scipy.stats.sem(accs)
     h = se * scipy.stats.t._ppf((1 + confidence) / 2, n - 1)
     return m, h
-
 
 def main():
 
@@ -55,16 +53,20 @@ def main():
     print('Total trainable tensors:', num)
 
     # batchsz here means total episode number
-    mini = MiniImagenet('/home/i/tmp/MAML-Pytorch/miniimagenet/', mode='train', n_way=args.n_way, k_shot=args.k_spt,
+    mini = MiniImagenet('F:\\ACV_project\\MAML-Pytorch\\miniimagenet\\', mode='train', n_way=args.n_way, k_shot=args.k_spt,
                         k_query=args.k_qry,
                         batchsz=10000, resize=args.imgsz)
-    mini_test = MiniImagenet('/home/i/tmp/MAML-Pytorch/miniimagenet/', mode='test', n_way=args.n_way, k_shot=args.k_spt,
+    mini_test = MiniImagenet('F:\\ACV_project\\MAML-Pytorch\\miniimagenet\\', mode='test', n_way=args.n_way, k_shot=args.k_spt,
                              k_query=args.k_qry,
                              batchsz=100, resize=args.imgsz)
+
+
+    ckpt_dir = "./model/"
 
     for epoch in range(args.epoch//10000):
         # fetch meta_batchsz num of episode each time
         db = DataLoader(mini, args.task_num, shuffle=True, num_workers=1, pin_memory=True)
+
 
         for step, (x_spt, y_spt, x_qry, y_qry) in enumerate(db):
 
@@ -90,6 +92,10 @@ def main():
                 accs = np.array(accs_all_test).mean(axis=0).astype(np.float16)
                 print('Test acc:', accs)
 
+                # save checkpoints
+                os.makedirs(ckpt_dir, exist_ok=True)
+                print('Saving the model as a checkpoint...')
+                torch.save({'epoch': epoch, 'Steps': step, 'model': maml.state_dict()}, os.path.join(ckpt_dir, 'checkpoint.pth'))
 
 if __name__ == '__main__':
 

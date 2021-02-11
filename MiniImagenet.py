@@ -1,3 +1,4 @@
+# Load and preprocess Dataset
 import os
 import torch
 from torch.utils.data import Dataset
@@ -7,8 +8,6 @@ import collections
 from PIL import Image
 import csv
 import random
-
-
 class MiniImagenet(Dataset):
     """
     put mini-imagenet files as :
@@ -21,10 +20,8 @@ class MiniImagenet(Dataset):
     batch: contains several sets
     sets: conains n_way * k_shot for meta-train set, n_way * n_query for meta-test set.
     """
-
     def __init__(self, root, mode, batchsz, n_way, k_shot, k_query, resize, startidx=0):
         """
-
         :param root: root path of mini-imagenet
         :param mode: train, val or test
         :param batchsz: batch size of sets, not batch of imgs
@@ -34,7 +31,6 @@ class MiniImagenet(Dataset):
         :param resize: resize to
         :param startidx: start to index label from startidx
         """
-
         self.batchsz = batchsz  # batch of set, not batch of imgs
         self.n_way = n_way  # n-way
         self.k_shot = k_shot  # k-shot
@@ -60,7 +56,6 @@ class MiniImagenet(Dataset):
                                                  transforms.ToTensor(),
                                                  transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
                                                  ])
-
         self.path = os.path.join(root, 'images')  # image path
         csvdata = self.loadCSV(os.path.join(root, mode + '.csv'))  # csv path
         self.data = []
@@ -69,7 +64,6 @@ class MiniImagenet(Dataset):
             self.data.append(v)  # [[img1, img2, ...], [img111, ...]]
             self.img2label[k] = i + self.startidx  # {"img_name[:9]":label}
         self.cls_num = len(self.data)
-
         self.create_batch(self.batchsz)
 
     def loadCSV(self, csvf):
@@ -120,7 +114,6 @@ class MiniImagenet(Dataset):
             # shuffle the correponding relation between support set and query set
             random.shuffle(support_x)
             random.shuffle(query_x)
-
             self.support_x_batch.append(support_x)  # append set to current sets
             self.query_x_batch.append(query_x)  # append sets to current sets
 
@@ -138,13 +131,11 @@ class MiniImagenet(Dataset):
         query_x = torch.FloatTensor(self.querysz, 3, self.resize, self.resize)
         # [querysz]
         query_y = np.zeros((self.querysz), dtype=np.int)
-
         flatten_support_x = [os.path.join(self.path, item)
                              for sublist in self.support_x_batch[index] for item in sublist]
         support_y = np.array(
             [self.img2label[item[:9]]  # filename:n0153282900000005.jpg, the first 9 characters treated as label
              for sublist in self.support_x_batch[index] for item in sublist]).astype(np.int32)
-
         flatten_query_x = [os.path.join(self.path, item)
                            for sublist in self.query_x_batch[index] for item in sublist]
         query_y = np.array([self.img2label[item[:9]]
@@ -162,7 +153,6 @@ class MiniImagenet(Dataset):
         for idx, l in enumerate(unique):
             support_y_relative[support_y == l] = idx
             query_y_relative[query_y == l] = idx
-
         # print('relative:', support_y_relative, query_y_relative)
 
         for i, path in enumerate(flatten_support_x):
@@ -172,13 +162,11 @@ class MiniImagenet(Dataset):
             query_x[i] = self.transform(path)
         # print(support_set_y)
         # return support_x, torch.LongTensor(support_y), query_x, torch.LongTensor(query_y)
-
         return support_x, torch.LongTensor(support_y_relative), query_x, torch.LongTensor(query_y_relative)
 
     def __len__(self):
         # as we have built up to batchsz of sets, you can sample some small batch size of sets.
         return self.batchsz
-
 
 if __name__ == '__main__':
     # the following episode is to view one set of images via tensorboard.
@@ -186,29 +174,21 @@ if __name__ == '__main__':
     from matplotlib import pyplot as plt
     from tensorboardX import SummaryWriter
     import time
-
     plt.ion()
-
     tb = SummaryWriter('runs', 'mini-imagenet')
-    mini = MiniImagenet('../mini-imagenet/', mode='train', n_way=5, k_shot=1, k_query=1, batchsz=1000, resize=168)
-
+    mini = MiniImagenet("F:\\ACV_project\\MAML-Pytorch\\miniimagenet\\", mode='train', n_way=5, k_shot=1, k_query=1, batchsz=1000, resize=168)
     for i, set_ in enumerate(mini):
         # support_x: [k_shot*n_way, 3, 84, 84]
         support_x, support_y, query_x, query_y = set_
-
         support_x = make_grid(support_x, nrow=2)
         query_x = make_grid(query_x, nrow=2)
-
         plt.figure(1)
         plt.imshow(support_x.transpose(2, 0).numpy())
         plt.pause(0.5)
         plt.figure(2)
         plt.imshow(query_x.transpose(2, 0).numpy())
         plt.pause(0.5)
-
         tb.add_image('support_x', support_x)
         tb.add_image('query_x', query_x)
-
         time.sleep(5)
-
     tb.close()

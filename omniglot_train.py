@@ -1,12 +1,11 @@
-import  torch, os
-import  numpy as np
-from    omniglotNShot import OmniglotNShot
-import  argparse
+import torch, os
+import numpy as np
+from omniglotNShot import OmniglotNShot
+import argparse
 
-from    meta import Meta
+from meta import Meta
 
 def main(args):
-
     torch.manual_seed(222)
     torch.cuda.manual_seed_all(222)
     np.random.seed(222)
@@ -45,6 +44,7 @@ def main(args):
                        k_query=args.k_qry,
                        imgsz=args.imgsz)
 
+    
     for step in range(args.epoch):
 
         x_spt, y_spt, x_qry, y_qry = db_train.next()
@@ -74,6 +74,8 @@ def main(args):
             accs = np.array(accs).mean(axis=0).astype(np.float16)
             print('Test acc:', accs)
 
+    
+
 
 if __name__ == '__main__':
 
@@ -91,5 +93,4 @@ if __name__ == '__main__':
     argparser.add_argument('--update_step_test', type=int, help='update steps for finetunning', default=10)
 
     args = argparser.parse_args()
-
     main(args)
